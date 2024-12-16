@@ -19,8 +19,10 @@
 
   **Ubuntu/Debian**
   `apt install curl`
+  
   **OpenSUSE**
   `zypper install curl`
+  
   **Fedora/Red Hat**
   `dnf install curl`
   
