@@ -1,9 +1,10 @@
 package main
 
 import (
-	"calculator-web-service/handlers"
 	"fmt"
 	"net/http"
+
+	"github.com/KozuGemer/calculator-web-service/handlers"
 )
 
 func main() {
