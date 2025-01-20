@@ -1,7 +1,9 @@
-package utils
+package utils_test
 
 import (
 	"testing"
+
+	"github.com/KozuGemer/calculator-web-service/utils"
 )
 
 func TestCalc(t *testing.T) {
@@ -53,7 +55,7 @@ func TestCalc(t *testing.T) {
 				}
 			}()
 
-			result, err := Calc(tt.expression)
+			result, err := utils.Calc(tt.expression)
 
 			if err != nil && tt.expectedError == "" {
 				t.Errorf("unexpected error: %v", err)
