@@ -15,7 +15,7 @@ func TestCalc(t *testing.T) {
 	}{
 		{
 			name:           "Valid Expression",
-			expression:     "2+2*2",
+			expression:     "2+2^2",
 			expectedResult: 6,
 			expectedError:  "",
 		},
