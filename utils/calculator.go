@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"unicode"
 
@@ -15,13 +16,16 @@ func precedence(op rune) int {
 		return 1
 	case '*', '/':
 		return 2
+	case '^': // Возведение в степень выше умножения
+		return 3
+	case '~': // Угарный минус выше всех
+		return 4
 	case '(':
 		return 0
 	}
 	return -1
 }
 
-// applyOperator - применяет оператор к двум числам
 func applyOperator(a, b float64, op rune) float64 {
 	switch op {
 	case '+':
@@ -35,13 +39,17 @@ func applyOperator(a, b float64, op rune) float64 {
 			panic("division by zero")
 		}
 		return a / b
+	case '^': // Возведение a в степень b
+		return math.Pow(a, b)
+	case '~': // Инверсия числа
+		return -a
 	}
 	return 0
 }
 
 // isOperator - проверяет, является ли символ оператором
 func isOperator(c rune) bool {
-	return c == '+' || c == '-' || c == '*' || c == '/'
+	return c == '+' || c == '-' || c == '*' || c == '/' || c == '^' || c == '~'
 }
 
 // isValidExpression - проверяет, является ли выражение допустимым
