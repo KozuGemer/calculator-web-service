@@ -77,7 +77,7 @@ func StartAgent(serverURL string) {
 		task, err := fetchTask(serverURL)
 		if err != nil {
 			fmt.Println("No tasks, retrying in 5 seconds...")
-			time.Sleep(5 * time.Second)
+			time.Sleep(1 * time.Second)
 			continue
 		}
 
