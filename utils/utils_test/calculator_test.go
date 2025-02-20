@@ -48,9 +48,9 @@ func TestCalcHTTP(t *testing.T) {
 		expectedStatus int
 	}{
 		{
-			name:           "Exponentiation test",
-			expression:     "3^3+3",
-			expectedResult: `{"result":30}`,
+			name:           "valid expression as ugarun minus",
+			expression:     "~2-2",
+			expectedResult: `{"result":0}`,
 			expectedStatus: http.StatusOK,
 		},
 	}

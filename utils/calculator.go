@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"unicode"
 
@@ -45,7 +46,7 @@ func applyOperator(a, b float64, op rune) float64 {
 		return math.Pow(a, b)
 
 	case '~': // Угарный минус
-		return b
+		return -b
 	}
 
 	panic(fmt.Sprintf("Unknown operator: %c", op))
@@ -54,6 +55,19 @@ func applyOperator(a, b float64, op rune) float64 {
 // isOperator - проверяет, является ли символ оператором
 func isOperator(c rune) bool {
 	return c == '+' || c == '-' || c == '*' || c == '/' || c == '^' || c == '~'
+}
+
+// Tokenize - разбивает выражение на операнды и операторы
+func Tokenize(expression string) ([]string, error) {
+	// Регулярное выражение для поиска чисел, операторов и скобок
+	re := regexp.MustCompile(`\d+(\.\d+)?|\+|\-|\*|\/|\^|\(|\)`)
+	tokens := re.FindAllString(expression, -1)
+
+	if len(tokens) == 0 {
+		return nil, errors.New("invalid expression: empty or incorrect format")
+	}
+
+	return tokens, nil
 }
 
 // isValidExpression - проверяет, является ли выражение допустимым
@@ -100,47 +114,22 @@ func Calc(expression string) (float64, error) {
 		return 0, err
 	}
 
+	// Разбираем выражение на токены
+	tokens, err := Tokenize(expression)
+	if err != nil {
+		return 0, err
+	}
+
 	var values models.Stack
 	var ops models.Stack
 
-	for i := 0; i < len(expression); i++ {
-		c := rune(expression[i])
-
-		// Пропуск пробелов
-		if unicode.IsSpace(c) {
-			continue
-		}
-		if c == '~' {
-			i++ // Пропускаем `~`
-			var sb string
-			for i < len(expression) && (unicode.IsDigit(rune(expression[i])) || expression[i] == '.') {
-				sb += string(expression[i])
-				i++
-			}
-			i-- // Корректируем индекс
-			num, err := strconv.ParseFloat(sb, 64)
-			if err != nil {
-				return 0, err
-			}
-			fmt.Println("Parsed ~:", -num) // Логируем, что реально попало
-			values.Push(-num)              // Кладём отрицательное число в стек
-		}
-		// Если текущий символ - число
-		if unicode.IsDigit(c) {
-			var sb string
-			for i < len(expression) && (unicode.IsDigit(rune(expression[i])) || expression[i] == '.') {
-				sb += string(expression[i])
-				i++
-			}
-			i-- // Корректируем индекс
-			num, err := strconv.ParseFloat(sb, 64)
-			if err != nil {
-				return 0, err
-			}
+	for _, token := range tokens {
+		// Если число
+		if num, err := strconv.ParseFloat(token, 64); err == nil {
 			values.Push(num)
-		} else if c == '(' {
-			ops.Push(float64(c)) // Используем float64 для хранения рун
-		} else if c == ')' {
+		} else if token == "(" {
+			ops.Push(float64('('))
+		} else if token == ")" {
 			for len(ops.Items) > 0 && ops.Items[len(ops.Items)-1] != float64('(') {
 				val2, _ := values.Pop()
 				val1, _ := values.Pop()
@@ -151,31 +140,22 @@ func Calc(expression string) (float64, error) {
 				ops.Pop() // Удаляем '('
 			}
 		} else { // Оператор
-			for len(ops.Items) > 0 && precedence(c) < precedence(rune(ops.Items[len(ops.Items)-1])) {
+			op := rune(token[0])
+			for len(ops.Items) > 0 && precedence(op) < precedence(rune(ops.Items[len(ops.Items)-1])) {
 				val2, _ := values.Pop()
 				val1, _ := values.Pop()
 				op, _ := ops.Pop()
 				values.Push(applyOperator(val1, val2, rune(op)))
 			}
-			ops.Push(float64(c))
+			ops.Push(float64(op))
 		}
 	}
 
 	// Обработка оставшихся операций
 	for len(ops.Items) > 0 {
-		val2, err := values.Pop()
-		if err != nil {
-			fmt.Println("ERROR: Tried to pop val2 but stack is empty!")
-		}
-		val1, err := values.Pop()
-		if err != nil {
-			fmt.Println("ERROR: Tried to pop val1 but stack is empty!")
-		}
-		op, err := ops.Pop()
-		if err != nil {
-			fmt.Println("ERROR: Tried to pop operator but stack is empty!")
-		}
-		fmt.Println("Applying", string(rune(op)), "to", val1, "and", val2)
+		val2, _ := values.Pop()
+		val1, _ := values.Pop()
+		op, _ := ops.Pop()
 		values.Push(applyOperator(val1, val2, rune(op)))
 	}
 
