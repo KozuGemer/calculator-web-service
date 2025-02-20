@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Калькулятор</h1>
+    <div class="calculator">
+        <input type="text" id="expression" placeholder="Введите пример">
+        <p id="info1"><b>Доступные операций: +, -, *, /</b></p>
+        <p id="info2"><b>Дополнительные операнды: 
+            ^(возведение в степень), 
+            ~(угарный минус)</b></p>
+        <button id="calculate" onclick="calculate()">Рассчитать</button>
+        <p id="result"></p>
+    </div>
+    <script>
+        function calculate() {
+            const expression = document.getElementById('expression').value;
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'expression=' + encodeURIComponent(expression),
+            })
+            .then(response => response.text())
+            .then(result => {
+                document.getElementById('result').textContent = 'Результат: ' + result;
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Ошибка: ' + error;
+            });
+        }
+    </script>
+</body>
+</html>
