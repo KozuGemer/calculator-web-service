@@ -1,43 +1,117 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
-	"text/template"
-
-	"github.com/KozuGemer/calculator-web-service/utils"
+	"sync"
+	"time"
 )
 
-func calculateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	r.ParseForm()
-	expression := r.Form.Get("expression")
-	result, err := utils.Calc(expression)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusBadRequest)
-		return
-	}
-
-	fmt.Fprintf(w, "%v", result)
+type Task struct {
+	ID         string   `json:"id"`
+	Expression string   `json:"expression"`
+	Result     *float64 `json:"result,omitempty"`
+	Status     string   `json:"status"`
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("site/index.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
+var (
+	taskQueue = make(map[string]*Task)
+	queueLock sync.Mutex
+)
+
+func generateTaskID() string {
+	rand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("task-%d", rand.Intn(1000000))
+}
+
+func createTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Expression string `json:"expression"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	tmpl.Execute(w, nil)
+
+	taskID := generateTaskID()
+	task := &Task{
+		ID:         taskID,
+		Expression: req.Expression,
+		Status:     "pending",
+	}
+
+	queueLock.Lock()
+	taskQueue[taskID] = task
+	queueLock.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"id": taskID})
+}
+
+func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	queueLock.Lock()
+	task, exists := taskQueue[id]
+	queueLock.Unlock()
+
+	if !exists {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
+func getNextTaskHandler(w http.ResponseWriter, r *http.Request) {
+	queueLock.Lock()
+	defer queueLock.Unlock()
+
+	for _, task := range taskQueue {
+		if task.Status == "pending" {
+			task.Status = "processing"
+			json.NewEncoder(w).Encode(task)
+			return
+		}
+	}
+
+	http.Error(w, "No pending tasks", http.StatusNotFound)
+}
+
+func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	var req struct {
+		Result float64 `json:"result"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	queueLock.Lock()
+	task, exists := taskQueue[id]
+	if exists && task.Status == "processing" {
+		task.Result = &req.Result
+		task.Status = "done"
+	}
+	queueLock.Unlock()
+
+	if !exists {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func main() {
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/calculate", calculateHandler)
+	http.HandleFunc("/api/v1/tasks", createTaskHandler)
+	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
+	http.HandleFunc("/api/v1/tasks/next", getNextTaskHandler)
+	http.HandleFunc("/api/v1/tasks/completetask", completeTaskHandler)
 	http.Handle("/style.css", http.FileServer(http.Dir("site")))
 
-	fmt.Println("Server started on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }

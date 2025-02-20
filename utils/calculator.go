@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"regexp"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/KozuGemer/calculator-web-service/models"
@@ -46,7 +46,7 @@ func applyOperator(a, b float64, op rune) float64 {
 		return math.Pow(a, b)
 
 	case '~': // Угарный минус
-		return -b
+		return b
 	}
 
 	panic(fmt.Sprintf("Unknown operator: %c", op))
@@ -59,12 +59,49 @@ func isOperator(c rune) bool {
 
 // Tokenize - разбивает выражение на операнды и операторы
 func Tokenize(expression string) ([]string, error) {
-	// Регулярное выражение для поиска чисел, операторов и скобок
-	re := regexp.MustCompile(`\d+(\.\d+)?|\+|\-|\*|\/|\^|\(|\)`)
-	tokens := re.FindAllString(expression, -1)
+	var tokens []string
+	var i int
 
-	if len(tokens) == 0 {
-		return nil, errors.New("invalid expression: empty or incorrect format")
+	for i < len(expression) {
+		c := expression[i]
+
+		// Обработка унарного минуса '~'
+		if c == '~' {
+			i++ // Пропускаем `~`
+			var sb string
+			for i < len(expression) && (unicode.IsDigit(rune(expression[i])) || expression[i] == '.') {
+				sb += string(expression[i])
+				i++
+			}
+			if sb == "" {
+				return nil, fmt.Errorf("invalid expression: ~ without a number")
+			}
+			num, err := strconv.ParseFloat(sb, 64)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println("Tokenized ~:", -num)                // Логируем реальное значение
+			tokens = append(tokens, fmt.Sprintf("%f", -num)) // Добавляем **уже отрицательное** число
+			continue
+		}
+
+		// Обработка чисел
+		if unicode.IsDigit(rune(c)) || c == '.' {
+			var sb string
+			for i < len(expression) && (unicode.IsDigit(rune(expression[i])) || expression[i] == '.') {
+				sb += string(expression[i])
+				i++
+			}
+			tokens = append(tokens, sb)
+			i-- // Корректируем индекс
+		} else if strings.ContainsRune("+-*/()", rune(c)) {
+			tokens = append(tokens, string(c))
+		} else if unicode.IsSpace(rune(c)) {
+			// Пропускаем пробелы
+		} else {
+			return nil, fmt.Errorf("invalid character: %c", c)
+		}
+		i++
 	}
 
 	return tokens, nil

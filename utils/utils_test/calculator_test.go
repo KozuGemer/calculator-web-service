@@ -6,12 +6,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/KozuGemer/calculator-web-service/utils"
 )
 
-// Функция-обработчик для тестирования API
+// calcHandler обрабатывает HTTP-запросы для теста API.
 func calcHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST is allowed", http.StatusMethodNotAllowed)
@@ -44,13 +45,13 @@ func TestCalcHTTP(t *testing.T) {
 	tests := []struct {
 		name           string
 		expression     string
-		expectedResult string
+		expectedResult map[string]float64
 		expectedStatus int
 	}{
 		{
-			name:           "valid expression as ugarun minus",
-			expression:     "~2-2",
-			expectedResult: `{"result":0}`,
+			name:           "valid expression with unary minus",
+			expression:     "~2+2",
+			expectedResult: map[string]float64{"result": 0}, // Ожидаемый результат исправлен
 			expectedStatus: http.StatusOK,
 		},
 	}
@@ -59,19 +60,29 @@ func TestCalcHTTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Создаём JSON-запрос
 			body, _ := json.Marshal(map[string]string{"expression": tt.expression})
-			resp, err := http.Post(server.URL+"/api/v1/calculate", "application/json", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPost, server.URL, bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			// Отправляем запрос
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("failed to send request: %v", err)
 			}
 			defer resp.Body.Close()
 
-			responseBody, _ := io.ReadAll(resp.Body)
+			// Проверяем статус-код ответа
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
 			}
 
-			if string(responseBody) != tt.expectedResult {
-				t.Errorf("expected result: %v, got: %v", tt.expectedResult, string(responseBody))
+			// Читаем JSON-ответ
+			var actualResult map[string]float64
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			json.Unmarshal(bodyBytes, &actualResult)
+
+			// Проверяем, что ответ совпадает с ожидаемым
+			if !reflect.DeepEqual(actualResult, tt.expectedResult) {
+				t.Errorf("expected result: %v, got: %v", tt.expectedResult, actualResult)
 			}
 		})
 	}
