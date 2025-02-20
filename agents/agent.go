@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/KozuGemer/calculator-web-service/utils"
 )
@@ -73,16 +74,23 @@ func calculate(expression string) float64 {
 
 func StartAgent(serverURL string) {
 	for {
+		startFetch := time.Now()
 		task, err := fetchTask(serverURL)
+		fmt.Println("fetchTask() time:", time.Since(startFetch))
 		if err != nil {
 			continue
 		}
 
+		startCalc := time.Now()
 		result := calculate(task.Expression)
+		fmt.Println("calculate() time:", time.Since(startCalc))
+
 		task.Result = &result
 
+		startSend := time.Now()
 		if err := sendResult(serverURL, task); err != nil {
 			fmt.Println("Error sending result:", err)
 		}
+		fmt.Println("sendResult() time:", time.Since(startSend))
 	}
 }
