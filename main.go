@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/KozuGemer/calculator-web-service/agents"
 )
 
 type Task struct {
@@ -50,9 +53,20 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"id": taskID})
 }
 
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("site/index.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
+
 func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	queueLock.Lock()
+	fmt.Println("Запрос статуса для задачи:", id)
+	fmt.Println("Текущее состояние задач:", taskQueue)
 	task, exists := taskQueue[id]
 	queueLock.Unlock()
 
@@ -107,11 +121,17 @@ func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/api/v1/tasks", createTaskHandler)
 	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/next", getNextTaskHandler)
 	http.HandleFunc("/api/v1/tasks/completetask", completeTaskHandler)
 	http.Handle("/style.css", http.FileServer(http.Dir("site")))
+	go agents.StartAgent("http://localhost:8080")
 
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("Server is running on :8080")
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		fmt.Println("Server error:", err)
+	}
 }

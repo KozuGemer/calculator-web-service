@@ -18,23 +18,43 @@
         <p id="result"></p>
     </div>
     <script>
-        function calculate() {
-            const expression = document.getElementById('expression').value;
-            fetch('/calculate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'expression=' + encodeURIComponent(expression),
-            })
-            .then(response => response.text())
-            .then(result => {
-                document.getElementById('result').textContent = 'Результат: ' + result;
-            })
-            .catch(error => {
-                document.getElementById('result').textContent = 'Ошибка: ' + error;
-            });
+function calculate() {
+    const expression = document.getElementById('expression').value;
+    fetch('/api/v1/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ expression }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Task status check:", data); // Логируем ответ сервера
+        if (data.id) {
+            checkStatus(data.id);
+        } else {
+            document.getElementById('result').textContent = 'Ошибка: Некорректный ответ сервера';
         }
+    })
+    .catch(error => {
+        document.getElementById('result').textContent = 'Ошибка: ' + error;
+    });
+}
+
+function checkStatus(taskId) {
+    fetch(`/api/v1/tasks/status?id=${taskId}`)
+    .then(response => response.json())
+    .then(task => {
+        if (task.status === 'done') {
+            document.getElementById('result').textContent = 'Результат: ' + task.result;
+        } else {
+            setTimeout(() => checkStatus(taskId), 1000);
+        }
+    })
+    .catch(error => {
+        document.getElementById('result').textContent = 'Ошибка: ' + error;
+    });
+}
     </script>
 </body>
 </html>

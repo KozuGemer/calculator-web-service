@@ -1,10 +1,13 @@
 package agents
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/KozuGemer/calculator-web-service/utils"
 )
 
 type Task struct {
@@ -33,33 +36,40 @@ func fetchTask(serverURL string) (*Task, error) {
 }
 
 func sendResult(serverURL string, task *Task) error {
-	_, err := json.Marshal(map[string]float64{"result": *task.Result})
+	data, err := json.Marshal(map[string]float64{"result": *task.Result}) // Создаём JSON
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", serverURL+"/api/v1/tasks/completetask?id="+task.ID, nil)
+	req, err := http.NewRequest("POST", serverURL+"/api/v1/tasks/completetask?id="+task.ID,
+		bytes.NewBuffer(data)) // Передаём JSON в тело запроса
 	if err != nil {
 		return err
 	}
-	req.Body = http.NoBody
+
+	req.Header.Set("Content-Type", "application/json") // Указываем, что это JSON
+
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // Отправляем запрос
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to send result")
+		return fmt.Errorf("failed to send result, status: %d", resp.StatusCode)
 	}
+
 	return nil
 }
 
 func calculate(expression string) float64 {
-	// Здесь будет вызов функции Calc
-	// Заглушка, пока нет реальной обработки:
-	return 42 // TODO: заменить на реальный расчет
+	result, err := utils.Calc(expression)
+	if err != nil {
+		fmt.Println("Calculation error:", err)
+		return 0 // или обработать ошибку иначе
+	}
+	return result
 }
 
 func StartAgent(serverURL string) {
