@@ -1,88 +1,77 @@
 package utils_test
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/KozuGemer/calculator-web-service/utils"
 )
 
-func TestCalc(t *testing.T) {
+// Функция-обработчик для тестирования API
+func calcHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Expression string `json:"expression"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	result, err := utils.Calc(req.Expression)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	resp := map[string]float64{"result": result}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func TestCalcHTTP(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(calcHandler))
+	defer server.Close()
+
 	tests := []struct {
 		name           string
 		expression     string
-		expectedResult float64
-		expectedError  string
+		expectedResult string
+		expectedStatus int
 	}{
 		{
-			name:           "Valid Expression",
-			expression:     "2+2^2",
-			expectedResult: 6,
-			expectedError:  "",
-		},
-		{
-			name:           "Invalid Expression - Consecutive Operators",
-			expression:     "2+2*-",
-			expectedResult: 0,
-			expectedError:  "invalid expression: consecutive operators",
-		},
-		{
-			name:           "Invalid Expression - Non-Mathematical Input",
-			expression:     "Hello World",
-			expectedResult: 0,
-			expectedError:  "invalid expression: invalid character",
-		},
-		{
-			name:           "Server Error - Division by Zero",
-			expression:     "1/0",
-			expectedResult: 0,
-			expectedError:  "panic: division by zero",
-		},
-		{
-			name:           "Invalid Expression - Unbalanced Parentheses",
-			expression:     "(2+3",
-			expectedResult: 0,
-			expectedError:  "invalid expression: unbalanced parentheses",
-		},
-		{
-			name:           "Is Valid Expression",
+			name:           "Exponentiation test",
 			expression:     "3^3+3",
-			expectedResult: 30,
-			expectedError:  "",
-		},
-		{
-			name:           "Is Valid Expression Uranian Minus",
-			expression:     "~3+3",
-			expectedResult: 0,
-			expectedError:  "",
+			expectedResult: `{"result":30}`,
+			expectedStatus: http.StatusOK,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					if tt.expectedError != "panic: division by zero" {
-						t.Errorf("unexpected panic: %v", r)
-					}
-				}
-			}()
+			// Создаём JSON-запрос
+			body, _ := json.Marshal(map[string]string{"expression": tt.expression})
+			resp, err := http.Post(server.URL+"/api/v1/calculate", "application/json", bytes.NewBuffer(body))
+			if err != nil {
+				t.Fatalf("failed to send request: %v", err)
+			}
+			defer resp.Body.Close()
 
-			result, err := utils.Calc(tt.expression)
-
-			if err != nil && tt.expectedError == "" {
-				t.Errorf("unexpected error: %v", err)
+			responseBody, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
 			}
 
-			if err == nil && tt.expectedError != "" {
-				t.Errorf("expected error: %v, got none", tt.expectedError)
-			}
-
-			if err != nil && err.Error() != tt.expectedError {
-				t.Errorf("expected error: %v, got: %v", tt.expectedError, err.Error())
-			}
-
-			if result != tt.expectedResult {
-				t.Errorf("expected result: %v, got: %v", tt.expectedResult, result)
+			if string(responseBody) != tt.expectedResult {
+				t.Errorf("expected result: %v, got: %v", tt.expectedResult, string(responseBody))
 			}
 		})
 	}

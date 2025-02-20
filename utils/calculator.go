@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"unicode"
@@ -29,6 +30,7 @@ func precedence(op rune) int {
 func applyOperator(a, b float64, op rune) float64 {
 	switch op {
 	case '+':
+		fmt.Println("Applying", string(op), "to", a, "and", b)
 		return a + b
 	case '-':
 		return a - b
@@ -41,10 +43,12 @@ func applyOperator(a, b float64, op rune) float64 {
 		return a / b
 	case '^': // Возведение a в степень b
 		return math.Pow(a, b)
-	case '~': // Инверсия числа
-		return -a
+
+	case '~': // Угарный минус
+		return b
 	}
-	return 0
+
+	panic(fmt.Sprintf("Unknown operator: %c", op))
 }
 
 // isOperator - проверяет, является ли символ оператором
@@ -65,6 +69,10 @@ func isValidExpression(expression string) error {
 			openBrackets++
 		} else if c == ')' {
 			openBrackets--
+		} else if isOperator(c) {
+			if c != '~' && isOperator(prevChar) { // Разрешаем `~` после оператора
+				return errors.New("invalid expression: consecutive operators")
+			}
 		} else if isOperator(c) {
 			if isOperator(prevChar) {
 				return errors.New("invalid expression: consecutive operators")
@@ -102,7 +110,21 @@ func Calc(expression string) (float64, error) {
 		if unicode.IsSpace(c) {
 			continue
 		}
-
+		if c == '~' {
+			i++ // Пропускаем `~`
+			var sb string
+			for i < len(expression) && (unicode.IsDigit(rune(expression[i])) || expression[i] == '.') {
+				sb += string(expression[i])
+				i++
+			}
+			i-- // Корректируем индекс
+			num, err := strconv.ParseFloat(sb, 64)
+			if err != nil {
+				return 0, err
+			}
+			fmt.Println("Parsed ~:", -num) // Логируем, что реально попало
+			values.Push(-num)              // Кладём отрицательное число в стек
+		}
 		// Если текущий символ - число
 		if unicode.IsDigit(c) {
 			var sb string
@@ -129,7 +151,7 @@ func Calc(expression string) (float64, error) {
 				ops.Pop() // Удаляем '('
 			}
 		} else { // Оператор
-			for len(ops.Items) > 0 && precedence(c) <= precedence(rune(ops.Items[len(ops.Items)-1])) {
+			for len(ops.Items) > 0 && precedence(c) < precedence(rune(ops.Items[len(ops.Items)-1])) {
 				val2, _ := values.Pop()
 				val1, _ := values.Pop()
 				op, _ := ops.Pop()
@@ -141,9 +163,19 @@ func Calc(expression string) (float64, error) {
 
 	// Обработка оставшихся операций
 	for len(ops.Items) > 0 {
-		val2, _ := values.Pop()
-		val1, _ := values.Pop()
-		op, _ := ops.Pop()
+		val2, err := values.Pop()
+		if err != nil {
+			fmt.Println("ERROR: Tried to pop val2 but stack is empty!")
+		}
+		val1, err := values.Pop()
+		if err != nil {
+			fmt.Println("ERROR: Tried to pop val1 but stack is empty!")
+		}
+		op, err := ops.Pop()
+		if err != nil {
+			fmt.Println("ERROR: Tried to pop operator but stack is empty!")
+		}
+		fmt.Println("Applying", string(rune(op)), "to", val1, "and", val2)
 		values.Push(applyOperator(val1, val2, rune(op)))
 	}
 
