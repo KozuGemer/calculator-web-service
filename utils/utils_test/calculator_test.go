@@ -43,6 +43,18 @@ func TestCalc(t *testing.T) {
 			expectedResult: 0,
 			expectedError:  "invalid expression: unbalanced parentheses",
 		},
+		{
+			name:           "Is Valid Expression",
+			expression:     "3^3+3",
+			expectedResult: 30,
+			expectedError:  "",
+		},
+		{
+			name:           "Is Valid Expression Uranian Minus",
+			expression:     "~3+3",
+			expectedResult: 0,
+			expectedError:  "",
+		},
 	}
 
 	for _, tt := range tests {
