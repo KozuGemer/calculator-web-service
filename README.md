@@ -84,5 +84,5 @@ curl -X GET http://localhost:8080/api/v1/expressions | jq
 
 ## Дополнительная документация
 
-Полное руководство можно найти в [Wiki проекта](https://github.com/ТВОЙ-АККАУНТ/РЕПОЗИТОРИЙ/wiki).
+Полное руководство можно найти в [Wiki проекта](https://github.com//KozuGemer/calculator-web-service/wiki).
 
