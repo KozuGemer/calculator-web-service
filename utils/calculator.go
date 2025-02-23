@@ -31,7 +31,6 @@ func precedence(op rune) int {
 func applyOperator(a, b float64, op rune) float64 {
 	switch op {
 	case '+':
-		fmt.Println("Applying", string(op), "to", a, "and", b)
 		return a + b
 	case '-':
 		return a - b
@@ -80,7 +79,6 @@ func Tokenize(expression string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("Tokenized ~:", -num)                // Логируем реальное значение
 			tokens = append(tokens, fmt.Sprintf("%f", -num)) // Добавляем **уже отрицательное** число
 			continue
 		}
