@@ -1,3 +1,3 @@
 module github.com/KozuGemer/calculator-web-service
 
-go 1.23.3
+go 1.23
