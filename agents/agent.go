@@ -23,7 +23,6 @@ type Task struct {
 var httpClient = &http.Client{Timeout: 1 * time.Second} // Глобальный клиент
 
 func fetchTask(serverURL string) (*Task, error) {
-	startFetch := time.Now()
 
 	resp, err := httpClient.Get(serverURL + "/api/v1/tasks/next") // Используем глобальный клиент
 	if err != nil {
@@ -44,8 +43,6 @@ func fetchTask(serverURL string) (*Task, error) {
 	if err := json.Unmarshal(body, &task); err != nil { // Декодируем JSON отдельно
 		return nil, err
 	}
-
-	fmt.Println("fetchTask() time:", time.Since(startFetch)) // Логируем только в конце
 
 	return &task, nil
 }
@@ -81,10 +78,7 @@ func sendResult(serverURL string, task *Task) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Замеряем время отправки
-	startSend := time.Now()
 	resp, err := httpClient.Do(req)
-	fmt.Println("sendResult() time:", time.Since(startSend))
 
 	if err != nil {
 		return err
@@ -122,10 +116,8 @@ func StartAgent(serverURL string) {
 
 		task.Result = &result
 
-		startSend := time.Now()
 		if err := sendResult(serverURL, task); err != nil {
 			fmt.Println("Error sending result:", err)
 		}
-		fmt.Println("sendResult() time:", time.Since(startSend))
 	}
 }

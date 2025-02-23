@@ -49,7 +49,13 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
 	queueLock.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"id": taskID})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":         taskID,
+		"expression": task.Expression,
+		"status":     "201 - Accepted for Processing",
+		"message":    "Task has been created and is being processed",
+	})
+
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +74,14 @@ func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
 	queueLock.Unlock()
 
 	if !exists {
-		http.Error(w, "Task not found", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":         id,
+			"expression": nil,
+			"result":     nil,
+			"status":     "404 - Not Found",
+		})
 		return
 	}
 
@@ -93,28 +106,63 @@ func getNextTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+
+	queueLock.Lock()
+	task, exists := taskQueue[id]
+	queueLock.Unlock()
+
+	if !exists {
+		w.WriteHeader(http.StatusNotFound)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":         id,
+			"expression": nil,
+			"result":     nil,
+			"status":     "404 - Not Found",
+		})
+		return
+	}
+
 	var req struct {
 		Result float64 `json:"result"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "400 - Bad Request",
+			"message": "Invalid JSON format",
+		})
 		return
 	}
 
 	queueLock.Lock()
-	task, exists := taskQueue[id]
-	if exists && task.Status == "processing" {
+	if task.Status == "processing" {
 		task.Result = &req.Result
 		task.Status = "done"
 	}
 	queueLock.Unlock()
-
-	if !exists {
-		http.Error(w, "Task not found", http.StatusNotFound)
+	if task.Status == "done" {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":         task.ID,
+			"expression": task.Expression,
+			"result":     task.Result,
+			"status":     "200 - Task Already Completed",
+		})
 		return
+	} else {
+		w.WriteHeader(210)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":         task.ID,
+			"expression": task.Expression,
+			"result":     task.Result,
+			"status":     "210 - OK",
+		})
 	}
 
-	w.WriteHeader(http.StatusOK)
 }
 
 // Получение всех задач (новая фича)
