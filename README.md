@@ -13,6 +13,7 @@
 Для других систем вам нужно установить через Docker или из исходников. Как установить рассказано на [Wiki:Starting](https://github.com//KozuGemer/calculator-web-service/wiki/Starting)
 
 ## Запуск сервера
+Запуск выполняется только из исходников репозитория. А так вам - это не нужно.
 
 ```sh
 go run main.go
