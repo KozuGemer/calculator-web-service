@@ -50,8 +50,38 @@ func TestCalcHTTP(t *testing.T) {
 	}{
 		{
 			name:           "valid expression with unary minus",
+			expression:     "~2+2",
+			expectedResult: map[string]float64{"result": 0}, // Ожидаемый результат
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid expression with stepping-stone",
 			expression:     "2^2",
-			expectedResult: map[string]float64{"result": 4}, // Ожидаемый результат исправлен
+			expectedResult: map[string]float64{"result": 4}, // Ожидаемый результат
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid expression with hard expression",
+			expression:     "~2^2+2*(~12)^4-8",
+			expectedResult: map[string]float64{"result": 41468}, // Ожидаемый результат
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid expression with simple expression",
+			expression:     "2+2-4",
+			expectedResult: map[string]float64{"result": 0}, // Ожидаемый результат
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid expression with / expression",
+			expression:     "45/9",
+			expectedResult: map[string]float64{"result": 5}, // Ожидаемый результат
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid expression with * expression",
+			expression:     "5*9",
+			expectedResult: map[string]float64{"result": 45}, // Ожидаемый результат
 			expectedStatus: http.StatusOK,
 		},
 	}
