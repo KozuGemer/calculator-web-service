@@ -4,27 +4,13 @@
 
 ## Установка
 
-Библиотека jq позволяет лучше читать json код.
+
 
 ### Windows
+Скачайте .exe из Releases. Запустите .exe програаму, когда сервер запустится, на экране на пишетсятся Server running :8080. Перейдите по [localhost:8080](http://localhost:8080) И начинайте возится обычным калькулятором.
 
-```
-winget install jqlang.jq
-```
-
-Работает, если у вас выше Windows 10
-
-### Linux (Debian/Ubuntu)
-
-```sh
-sudo apt update && sudo apt install -y golang jq
-```
-
-### macOS
-
-```sh
-brew install go jq
-```
+### Другие системы
+Для других систем вам нужно установить через Docker или из исходников. Как установить рассказано на [Wiki:Starting](https://github.com//KozuGemer/calculator-web-service/wiki/Starting)
 
 ## Запуск сервера
 
@@ -83,6 +69,7 @@ curl -X GET http://localhost:8080/api/v1/expressions | jq
 ```
 
 ## Дополнительная документация
+Дополнительная документация, на английском языке.
 
 Полное руководство можно найти в [Wiki проекта](https://github.com//KozuGemer/calculator-web-service/wiki).
 
