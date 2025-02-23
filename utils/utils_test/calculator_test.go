@@ -50,8 +50,8 @@ func TestCalcHTTP(t *testing.T) {
 	}{
 		{
 			name:           "valid expression with unary minus",
-			expression:     "~2+2",
-			expectedResult: map[string]float64{"result": 0}, // Ожидаемый результат исправлен
+			expression:     "2^2",
+			expectedResult: map[string]float64{"result": 4}, // Ожидаемый результат исправлен
 			expectedStatus: http.StatusOK,
 		},
 	}

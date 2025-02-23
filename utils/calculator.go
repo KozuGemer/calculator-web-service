@@ -94,7 +94,7 @@ func Tokenize(expression string) ([]string, error) {
 			}
 			tokens = append(tokens, sb)
 			i-- // Корректируем индекс
-		} else if strings.ContainsRune("+-*/()", rune(c)) {
+		} else if strings.ContainsRune("+-*/()^", rune(c)) {
 			tokens = append(tokens, string(c))
 		} else if unicode.IsSpace(rune(c)) {
 			// Пропускаем пробелы

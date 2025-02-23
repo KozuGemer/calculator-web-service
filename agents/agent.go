@@ -32,6 +32,8 @@ func fetchTask(serverURL string) (*Task, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
 		return nil, err
 	}
+	startFetch := time.Now()
+	fmt.Println("fetchTask() time:", time.Since(startFetch))
 	return &task, nil
 }
 
@@ -50,6 +52,10 @@ func sendResult(serverURL string, task *Task) error {
 	req.Header.Set("Content-Type", "application/json") // Указываем, что это JSON
 
 	client := &http.Client{}
+
+	fmt.Println("Sending result to:", req.URL)
+	fmt.Println("Payload:", string(data))
+
 	resp, err := client.Do(req) // Отправляем запрос
 	if err != nil {
 		return err
@@ -74,16 +80,16 @@ func calculate(expression string) float64 {
 
 func StartAgent(serverURL string) {
 	for {
-		startFetch := time.Now()
+		// startFetch := time.Now()
 		task, err := fetchTask(serverURL)
-		fmt.Println("fetchTask() time:", time.Since(startFetch))
+		// fmt.Println("fetchTask() time:", time.Since(startFetch))
 		if err != nil {
 			continue
 		}
 
-		startCalc := time.Now()
+		// startCalc := time.Now()
 		result := calculate(task.Expression)
-		fmt.Println("calculate() time:", time.Since(startCalc))
+		// fmt.Println("calculate() time:", time.Since(startCalc))
 
 		task.Result = &result
 
