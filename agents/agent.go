@@ -1,11 +1,13 @@
 package agents
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/KozuGemer/calculator-web-service/utils"
@@ -47,22 +49,41 @@ func fetchTask(serverURL string) (*Task, error) {
 
 	return &task, nil
 }
+
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
+
 func sendResult(serverURL string, task *Task) error {
-	data, err := json.Marshal(map[string]float64{"result": *task.Result})
-	if err != nil {
+	// Используем пул буферов
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer bufferPool.Put(buf)
+	buf.Reset()
+
+	// Кодируем данные в буфер
+	if err := json.NewEncoder(buf).Encode(map[string]float64{"result": *task.Result}); err != nil {
 		return err
 	}
 
-	url := serverURL + "/api/v1/tasks/completetask?id=" + task.ID
-	req, err := http.NewRequest("POST", url, strings.NewReader(string(data))) // Оптимизированная отправка
+	// Создаем URL с помощью strings.Builder
+	var urlBuilder strings.Builder
+	urlBuilder.WriteString(serverURL)
+	urlBuilder.WriteString("/api/v1/tasks/completetask?id=")
+	urlBuilder.WriteString(task.ID)
+	url := urlBuilder.String()
+
+	// Создаем запрос
+	req, err := http.NewRequest("POST", url, buf)
 	if err != nil {
 		return err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 
+	// Замеряем время отправки
 	startSend := time.Now()
-	resp, err := httpClient.Do(req) // Используем глобальный клиент
+	resp, err := httpClient.Do(req)
 	fmt.Println("sendResult() time:", time.Since(startSend))
 
 	if err != nil {

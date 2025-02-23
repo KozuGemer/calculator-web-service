@@ -18,42 +18,41 @@
         <p id="result"></p>
     </div>
     <script>
-function calculate() {
+async function calculate() {
     const expression = document.getElementById('expression').value;
-    fetch('/api/v1/tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ expression }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log("Task status check:", data); // Логируем ответ сервера
+    try {
+        const response = await fetch('/api/v1/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ expression }),
+        });
+        const data = await response.json();
+        console.log("Task status check:", data);
         if (data.id) {
-            checkStatus(data.id);
+            await checkStatus(data.id);
         } else {
             document.getElementById('result').textContent = 'Ошибка: Некорректный ответ сервера';
         }
-    })
-    .catch(error => {
+    } catch (error) {
         document.getElementById('result').textContent = 'Ошибка: ' + error;
-    });
+    }
 }
 
-function checkStatus(taskId) {
-    fetch(`/api/v1/tasks/status?id=${taskId}`)
-    .then(response => response.json())
-    .then(task => {
+async function checkStatus(taskId, delay = 500) {
+    try {
+        const response = await fetch(`/api/v1/tasks/status?id=${taskId}`);
+        const task = await response.json();
         if (task.status === 'done') {
             document.getElementById('result').textContent = 'Результат: ' + task.result;
         } else {
-            setTimeout(() => checkStatus(taskId), 1000);
+            await new Promise(resolve => setTimeout(resolve, delay)); // Ждем delay мс
+            await checkStatus(taskId, Math.min(delay * 2, 2000)); // Рекурсивно вызываем с увеличенной задержкой
         }
-    })
-    .catch(error => {
+    } catch (error) {
         document.getElementById('result').textContent = 'Ошибка: ' + error;
-    });
+    }
 }
     </script>
 </body>

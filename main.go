@@ -37,7 +37,6 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
 	taskID := generateTaskID()
 	task := &Task{
 		ID:         taskID,
@@ -65,8 +64,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	queueLock.Lock()
-	fmt.Println("Запрос статуса для задачи:", id)
-	fmt.Println("Текущее состояние задач:", taskQueue)
 	task, exists := taskQueue[id]
 	queueLock.Unlock()
 
@@ -120,12 +117,29 @@ func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// Получение всех задач (новая фича)
+func getAllExpressions(w http.ResponseWriter, r *http.Request) {
+	queueLock.Lock()
+	defer queueLock.Unlock()
+
+	expressions := make([]Task, 0, len(taskQueue))
+	for _, task := range taskQueue {
+		expressions = append(expressions, *task)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"expressions": expressions,
+	})
+}
+
 func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/api/v1/tasks", createTaskHandler)
 	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/next", getNextTaskHandler)
 	http.HandleFunc("/api/v1/tasks/completetask", completeTaskHandler)
+	http.HandleFunc("/api/v1/expressions", getAllExpressions) // Новый маршрут
 	http.Handle("/style.css", http.FileServer(http.Dir("site")))
 	go agents.StartAgent("http://localhost:8080")
 
