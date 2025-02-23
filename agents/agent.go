@@ -1,10 +1,11 @@
 package agents
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/KozuGemer/calculator-web-service/utils"
@@ -17,8 +18,12 @@ type Task struct {
 	Status     string   `json:"status"`
 }
 
+var httpClient = &http.Client{Timeout: 1 * time.Second} // Глобальный клиент
+
 func fetchTask(serverURL string) (*Task, error) {
-	resp, err := http.Get(serverURL + "/api/v1/tasks/next")
+	startFetch := time.Now()
+
+	resp, err := httpClient.Get(serverURL + "/api/v1/tasks/next") // Используем глобальный клиент
 	if err != nil {
 		return nil, err
 	}
@@ -28,35 +33,38 @@ func fetchTask(serverURL string) (*Task, error) {
 		return nil, fmt.Errorf("no tasks available")
 	}
 
-	var task Task
-	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+	body, err := io.ReadAll(resp.Body) // Читаем тело ответа одним вызовом
+	if err != nil {
 		return nil, err
 	}
-	startFetch := time.Now()
-	fmt.Println("fetchTask() time:", time.Since(startFetch))
+
+	var task Task
+	if err := json.Unmarshal(body, &task); err != nil { // Декодируем JSON отдельно
+		return nil, err
+	}
+
+	fmt.Println("fetchTask() time:", time.Since(startFetch)) // Логируем только в конце
+
 	return &task, nil
 }
-
 func sendResult(serverURL string, task *Task) error {
-	data, err := json.Marshal(map[string]float64{"result": *task.Result}) // Создаём JSON
+	data, err := json.Marshal(map[string]float64{"result": *task.Result})
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", serverURL+"/api/v1/tasks/completetask?id="+task.ID,
-		bytes.NewBuffer(data)) // Передаём JSON в тело запроса
+	url := serverURL + "/api/v1/tasks/completetask?id=" + task.ID
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(data))) // Оптимизированная отправка
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "application/json") // Указываем, что это JSON
+	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	startSend := time.Now()
+	resp, err := httpClient.Do(req) // Используем глобальный клиент
+	fmt.Println("sendResult() time:", time.Since(startSend))
 
-	fmt.Println("Sending result to:", req.URL)
-	fmt.Println("Payload:", string(data))
-
-	resp, err := client.Do(req) // Отправляем запрос
 	if err != nil {
 		return err
 	}
