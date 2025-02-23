@@ -1,9 +1,9 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -24,9 +24,22 @@ var (
 	queueLock sync.Mutex
 )
 
+//go:embed site/*
+var embeddedFiles embed.FS
+
 func generateTaskID() string {
 	rand.Seed(time.Now().UnixNano())
 	return fmt.Sprintf("task-%d", rand.Intn(1000000))
+}
+
+func styleHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := embeddedFiles.ReadFile("site/style.css")
+	if err != nil {
+		http.Error(w, "Error loading CSS", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/css")
+	w.Write(data)
 }
 
 func createTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,12 +72,13 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("site/index.html")
+	data, err := embeddedFiles.ReadFile("site/index.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(data)
 }
 
 func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +202,7 @@ func main() {
 	http.HandleFunc("/api/v1/tasks/next", getNextTaskHandler)
 	http.HandleFunc("/api/v1/tasks/completetask", completeTaskHandler)
 	http.HandleFunc("/api/v1/expressions", getAllExpressions) // Новый маршрут
-	http.Handle("/style.css", http.FileServer(http.Dir("site")))
+	http.HandleFunc("/style.css", styleHandler)
 	go agents.StartAgent("http://localhost:8080")
 
 	fmt.Println("Server is running on :8080")
