@@ -1,0 +1,131 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: 0;
+    outline: 0;
+}
+html{
+    background-color: #e8e3e3
+}
+body{
+    h1{
+        margin-left: 0.4em;
+    }
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    h2{
+        font-size: 2em;
+        text-align: center;
+    }
+}
+.auth-container{
+    border: 0.1em solid #000;
+    width: max-content;
+    padding: 0.2em;
+    align-items: center;
+    text-align: center;
+    font-size: 1.5em;
+    margin-top: 0.2em;
+    background-color: #e8e3e3;
+    border-radius: 0.3em;
+    width: 19em;
+    height: 12em;
+    p{
+        font-size: 1.1em;
+    }
+    button{
+        border: 0.2em solid #000;
+        border-radius: 0.3em;
+        size: 2em;
+        font-size: 1em;
+        margin-top: 0.2em;
+        margin-right: 0.2em;
+        padding: 0.2em;
+        padding-top: 0.1em;
+        padding-bottom: 0.1em;
+        transition: all 0.3s ease-in-out; /* Плавное изменение свойств */
+        animation: glowing 1.5s ease-in-out infinite; /* Анимация пульсации */
+    }
+    button:hover {
+        color: #361973;
+        box-shadow: 0 0 15px 4px #361973; /* Усиливаем тень при фокусе */
+        border-color: #361973;
+        cursor: pointer;
+    }
+    
+    @keyframes glowing {
+        0% {
+            box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+            border-color: #361973;
+        }
+        50% {
+            box-shadow: 0 0 10px #361973, 0 0 20px #361973, 0 0 30px #361973;
+            border-color: #5b1f87;
+        }
+        100% {
+            box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+            border-color: #361973;
+        }
+    }
+
+#login, #password {
+    display: block;
+    margin-top: 0.5em;
+    margin-left: 25%;
+    block-size: 2.3em;
+    border: 0.2em solid #000;
+    border-radius: 0.3em;
+    font-size: 0.7em;
+    align-items: center;
+    text-align: center;
+    align-content: center;
+    padding: 0.3em; /* Добавил отступы внутри */
+    transition: all 0.3s ease-in-out; /* Плавное изменение свойств */
+    animation: glowing 1.5s ease-in-out infinite; /* Анимация пульсации */
+}
+
+   /* Анимация пульсации */
+@keyframes glowing {
+    0% {
+        box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+        border-color: #361973;
+    }
+    50% {
+        box-shadow: 0 0 20px #361973, 0 0 30px #361973, 0 0 40px #361973;
+        border-color: #5b1f87;
+    }
+    100% {
+        box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+        border-color: #361973;
+    }
+}
+#login:focus, #password:focus {
+    color: #361973;
+    box-shadow: 0 0 15px 4px #361973; /* Усиливаем тень при фокусе */
+    border-color: #361973;
+}
+
+    a{
+        text-decoration: none;
+        width: max-content;
+        display: block;
+        color:#361973;
+        transition: all 0.3s ease-in-out; /* Плавное изменение свойств */
+        animation: glowing 1.5s ease-in-out infinite; /* Анимация пульсации */
+        border-radius: 0.2em;
+        align-self: center;
+        margin-left:4em;
+        margin-top: 0.2em;
+        border: #361973 0.1em solid;
+    }
+    a:hover{
+        color: #361973;
+        box-shadow: 0 0 15px 4px #361973; /* Усиливаем тень при фокусе */
+        border-color: #361973;
+    }
+}

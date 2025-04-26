@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/KozuGemer/calculator-web-service/agents"
+	"github.com/KozuGemer/calculator-web-service/db"
+	"github.com/KozuGemer/calculator-web-service/handlers"
 )
 
 type Task struct {
@@ -32,13 +34,58 @@ func generateTaskID() string {
 	return fmt.Sprintf("task-%d", rand.Intn(1000000))
 }
 
+// Обработчик для загрузки CSS файла
 func styleHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := embeddedFiles.ReadFile("site/style.css")
+	var data []byte
+	var err error
+
+	// В зависимости от того, на какой странице находимся, выбираем нужный стиль
+	if r.URL.Query().Get("token") == "" {
+		data, err = embeddedFiles.ReadFile("site/login.css") // Стиль для страницы входа
+	} else {
+		data, err = embeddedFiles.ReadFile("site/style.css") // Основной стиль
+	}
+
 	if err != nil {
 		http.Error(w, "Error loading CSS", http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "text/css")
+	w.Write(data)
+}
+
+// Обработчик для страницы (index.html или login.html)
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	var data []byte
+	var err error
+
+	// В зависимости от пути выбираем нужную страницу
+	if r.URL.Query().Get("token") == "" {
+		// Загружаем страницу login.html
+		data, err = embeddedFiles.ReadFile("site/login.html")
+	} else {
+		// Загружаем страницу index.html (по умолчанию)
+		data, err = embeddedFiles.ReadFile("site/index.html")
+	}
+
+	if err != nil {
+		http.Error(w, "Error loading HTML page", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(data)
+}
+
+// Обработчик для загрузки JS файла
+func jsHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := embeddedFiles.ReadFile("site/app.js")
+	if err != nil {
+		http.Error(w, "Error loading JS", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript")
 	w.Write(data)
 }
 
@@ -69,16 +116,6 @@ func createTaskHandler(w http.ResponseWriter, r *http.Request) {
 		"message":    "Task has been created and is being processed",
 	})
 
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := embeddedFiles.ReadFile("site/index.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html")
-	w.Write(data)
 }
 
 func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -196,13 +233,21 @@ func getAllExpressions(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Инициализация базы данных
+	db.InitDB()
+
+	// Регистрация маршрутов
+	http.HandleFunc("/api/v1/register", handlers.RegisterHandler)
+	http.HandleFunc("/api/v1/login", handlers.LoginHandler)
+	http.HandleFunc("/login.css", styleHandler)
+	http.HandleFunc("/style.css", styleHandler)
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/api/v1/tasks", createTaskHandler)
 	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/next", getNextTaskHandler)
 	http.HandleFunc("/api/v1/tasks/completetask", completeTaskHandler)
 	http.HandleFunc("/api/v1/expressions", getAllExpressions) // Новый маршрут
-	http.HandleFunc("/style.css", styleHandler)
+	http.HandleFunc("/app.js", jsHandler)
 	go agents.StartAgent("http://localhost:8080")
 
 	fmt.Println("Server is running on :8080")

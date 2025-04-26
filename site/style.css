@@ -55,7 +55,25 @@ width: 50em;
     font-size: 1.7em;
     font-weight: bold;
     margin-left: 7.9em;
+    transition: all 0.3s ease-in-out; /* Плавное изменение свойств */
+    animation: glowing 1.5s ease-in-out infinite; /* Анимация пульсации */
 }
+
+@keyframes glowing {
+    0% {
+        box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+        border-color: #361973;
+    }
+    50% {
+        box-shadow: 0 0 10px #361973, 0 0 20px #361973, 0 0 30px #361973;
+        border-color: #5b1f87;
+    }
+    100% {
+        box-shadow: 0 0 5px #361973, 0 0 10px #361973, 0 0 15px #361973;
+        border-color: #361973;
+    }
+}
+
 #expression:focus{
     color: #361973;
     box-shadow: 0rem 0rem 4rem #361973;
