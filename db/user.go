@@ -2,45 +2,125 @@ package db
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/KozuGemer/calculator-web-service/models"
+	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Регистрация нового пользователя
 func RegisterUser(login, password string) (*models.User, error) {
-	// Проверим, не существует ли уже такой логин
+	log.Println("Начало регистрации пользователя:", login)
+
+	// Проверяем, существует ли логин
 	var existingLogin string
 	err := DB.QueryRow("SELECT login FROM users WHERE login = ?", login).Scan(&existingLogin)
 	if err == nil {
+		log.Println("Ошибка: логин уже существует:", existingLogin)
 		return nil, fmt.Errorf("user with this login already exists")
 	}
 
-	// Добавляем нового пользователя в базу данных
-	stmt, err := DB.Prepare("INSERT INTO users(login, password) VALUES(?, ?)")
+	// Хэшируем пароль
+	log.Println("Хэшируем пароль для пользователя:", login)
+	log.Println("Пароль:", password)
+	// Генерируем токен
+	token := generateJWTToken(login)
+	log.Println("Сгенерирован токен:", token)
+
+	// Добавляем пользователя в базу данных
+	stmt, err := DB.Prepare("INSERT INTO users(login, password, token) VALUES(?, ?, ?)")
 	if err != nil {
-		return nil, err
-	}
-	_, err = stmt.Exec(login, password)
-	if err != nil {
-		return nil, err
+		log.Println("Ошибка при подготовке SQL запроса:", err)
+		return nil, fmt.Errorf("error preparing statement: %v", err)
 	}
 
-	// Возвращаем созданного пользователя
-	var user models.User
-	err = DB.QueryRow("SELECT id, login FROM users WHERE login = ?", login).Scan(&user.ID, &user.Login)
+	_, err = stmt.Exec(login, string(password), token)
 	if err != nil {
-		return nil, err
+		log.Println("Ошибка при вставке пользователя в базу:", err)
+		return nil, fmt.Errorf("error inserting user: %v", err)
 	}
 
-	return &user, nil
+	log.Println("Регистрация завершена успешно для:", login)
+	return &models.User{Login: login, Password: string(password), Token: token}, nil
 }
 
 // Авторизация пользователя
 func AuthenticateUser(login, password string) (*models.User, error) {
+	log.Println("Аутентификация пользователя:", login)
+
 	var user models.User
-	err := DB.QueryRow("SELECT id, login FROM users WHERE login = ? AND password = ?", login, password).Scan(&user.ID, &user.Login)
+	var hashedPassword string
+
+	// Чётко извлекаем хэш из базы данных
+	err := DB.QueryRow("SELECT id, login, password, token FROM users WHERE login = ?", login).
+		Scan(&user.ID, &user.Login, &hashedPassword, &user.Token)
+
 	if err != nil {
+		log.Println("Ошибка извлечения данных из БД:", err)
 		return nil, fmt.Errorf("invalid login or password")
 	}
+
+	// Проверяем, правильно ли извлекается хэш
+	log.Println("Хэш пароля, загруженный из базы:", hashedPassword)
+
+	// Сравнение пароля с хэшем из базы
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		log.Println("Ошибка сравнения паролей:", err)
+		return nil, fmt.Errorf("invalid login or password")
+	}
+
+	log.Println("Пароль успешно совпал!")
+
+	// Генерируем новый токен для пользователя
+	newToken := generateJWTToken(login)
+	log.Println("Сгенерирован новый токен:", newToken)
+
+	// Обновляем токен в БД
+	_, err = DB.Exec("UPDATE users SET token = ? WHERE login = ?", newToken, login)
+	if err != nil {
+		log.Println("Ошибка при обновлении токена в БД:", err)
+		return nil, fmt.Errorf("error updating token")
+	}
+
+	log.Println("Токен успешно обновлён!")
+
+	user.Token = newToken
 	return &user, nil
+}
+
+func UpdateUserToken(userID int, newToken string) error {
+	// Обновляем токен пользователя по его ID
+	stmt, err := DB.Prepare("UPDATE users SET token = ? WHERE id = ?")
+	if err != nil {
+		return fmt.Errorf("error preparing statement: %v", err)
+	}
+	_, err = stmt.Exec(newToken, userID)
+	if err != nil {
+		return fmt.Errorf("error updating token for user %d: %v", userID, err)
+	}
+	return nil
+}
+
+// Функция для генерации JWT токена
+func generateJWTToken(login string) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"login": login,
+		"exp":   time.Now().Add(24 * time.Hour).Unix(),
+	})
+
+	tokenString, _ := token.SignedString([]byte("your-secret-key"))
+	return tokenString
+}
+
+// Получение токена для пользователя по логину
+func GetUserToken(login string) (string, error) {
+	var token string
+	err := DB.QueryRow("SELECT token FROM users WHERE login = ?", login).Scan(&token)
+	if err != nil {
+		return "", fmt.Errorf("error fetching token for user: %v", err)
+	}
+	return token, nil
 }

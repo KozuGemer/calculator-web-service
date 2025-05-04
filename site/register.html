@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <!-- Подключаем CSS для страницы регистрации -->
+    <link rel="stylesheet" href="/style/register.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Регистрация</h2>
+        <form id="register-form">
+            <div>
+                <label for="login">Никнейм:</label>
+                <input type="text" id="login" name="login" required>
+            </div>
+            <div>
+                <label for="password">Пароль:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div>
+                <label for="confirm-password">Подверждение пароля:</label>
+                <input type="password" id="confirm-password" name="confirm-password" required>
+            </div>
+            <div>
+                <button type="submit">Зарегистрироваться</button>
+            </div>
+        </form>
+        <p>Вы тут же бывали?<a href="login.html">Тогда можете войти, тут.</a></p>
+    </div>
+
+    <script src="/jsscripts/register.js"></script> <!-- Подключаем JS для обработки регистрации -->
+</body>
+</html>

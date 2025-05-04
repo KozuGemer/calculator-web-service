@@ -1,0 +1,134 @@
+/* Обнуляем стили для всех элементов */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: 0;
+    outline: 0;
+}
+
+/* Устанавливаем фон для html */
+html {
+    background-color: #e8e3e3;
+}
+
+/* Стиль для body */
+body {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+}
+
+/* Стиль для заголовков h1 и h2 */
+h1 {
+    margin-left: 0.4em;
+}
+
+h2 {
+    font-size: 2em;
+    text-align: center;
+    margin-bottom: 20px; /* Добавим отступ снизу */
+}
+
+/* Контейнер для формы */
+.container {
+    width: 300px;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px; /* Добавим округленные углы */
+    text-align: center;
+}
+
+/* Стиль для полей ввода и кнопки */
+label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 0.2em solid #000;
+    border-radius: 4px;
+    font-size: 0.7em;
+    align-items: center;
+    text-align: center;
+    align-content: center;
+    box-sizing: border-box;
+    transition: all 0.3s ease-in-out; /* Плавное изменение свойств */
+    animation: glowing 2.5s ease-in-out infinite; /* Анимация пульсации */
+}
+
+/* Анимация пульсации для полей ввода */
+@keyframes glowing {
+    0% {
+        box-shadow: 0 0 5px #8a2be2, 0 0 10px #8a2be2, 0 0 15px #8a2be2;
+        border-color: #8a2be2; /* Фиолетовый цвет */
+    }
+    50% {
+        box-shadow: 0 0 20px #8a2be2, 0 0 30px #8a2be2, 0 0 40px #8a2be2;
+        border-color: #4b0082; /* Более тёмный фиолетовый */
+    }
+    100% {
+        box-shadow: 0 0 5px #8a2be2, 0 0 10px #8a2be2, 0 0 15px #8a2be2;
+        border-color: #8a2be2; /* Фиолетовый цвет */
+    }
+}
+
+/* Эффект при фокусе на полях ввода */
+#login:focus, #password:focus {
+    color: #8a2be2; /* Фиолетовый цвет */
+    box-shadow: 0 0 15px 4px #8a2be2; /* Усиливаем тень при фокусе */
+    border-color: #8a2be2; /* Фиолетовый цвет */
+}
+
+/* Стиль для кнопки */
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #8a2be2; /* Заменим на фиолетовый */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #892be2b0;
+}
+
+/* Стиль для ссылок */
+p {
+    margin-top: 10px;
+}
+
+a {
+    text-decoration: none;
+    width: max-content;
+    display: block;
+    color: #8a2be2; /* Фиолетовый цвет */
+    border-radius: 0.2em;
+    align-self: center;
+    margin-left: 2.3em;
+    margin-top: 0.2em;
+    text-align: center;
+}
+
+/* Центрирование текста и ссылка внизу */
+.container p {
+    text-align: center;
+    margin-top: 15px; /* Дополнительный отступ сверху */
+}
+
+.container a {
+    text-align: center;
+    margin-top: 10px;
+}
