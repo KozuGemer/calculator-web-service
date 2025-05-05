@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/KozuGemer/calculator-web-service/models"
@@ -16,29 +17,28 @@ func GetUserByLogin(login string) (*models.User, error) {
 }
 
 // Создание задачи в базе данных
-func CreateTask(userID int, expression string) (*models.Task, error) {
-	stmt, err := DB.Prepare("INSERT INTO tasks (user_id, expression, status) VALUES (?, ?, ?)")
+func CreateTask(TaskID int, UserID int, expression string) (*models.Task, error) {
+	stmt, err := DB.Prepare("INSERT INTO tasks (task_id, user_id, expression, status) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		return nil, fmt.Errorf("error preparing statement: %v", err)
 	}
 
 	// Статус задачи по умолчанию "pending"
-	_, err = stmt.Exec(userID, expression, "pending")
+	_, err = stmt.Exec(TaskID, UserID, expression, "pending")
 	if err != nil {
 		return nil, fmt.Errorf("error executing statement: %v", err)
 	}
 
 	// Получаем ID только что созданной задачи
-	var taskID int
-	err = DB.QueryRow("SELECT id FROM tasks WHERE user_id = ? AND expression = ? ORDER BY id DESC LIMIT 1", userID, expression).Scan(&taskID)
+	err = DB.QueryRow("SELECT task_id FROM tasks WHERE user_id = ? AND expression = ? ORDER BY task_id DESC LIMIT 1", UserID, expression).Scan(&TaskID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching task id: %v", err)
 	}
 
 	// Возвращаем задачу
 	return &models.Task{
-		ID:         taskID,
-		UserID:     userID, // Привязываем задачу к пользователю
+		ID:         TaskID,
+		UserID:     UserID, // Привязываем задачу к пользователю
 		Expression: expression,
 		Status:     "pending",
 	}, nil
@@ -59,25 +59,24 @@ func UpdateTaskStatus(taskID int, status string, result float64) error {
 	return nil
 }
 
-// Получение задач пользователя из базы данных
-func GetTasksByUser(userID int) ([]models.Task, error) {
-	rows, err := DB.Query("SELECT id, expression, result, status FROM tasks WHERE user_id = ?", userID)
+func GetNextTask() (*models.Task, error) {
+	// Запрос для получения задачи со статусом "pending"
+	var task models.Task
+	err := DB.QueryRow(`
+		SELECT id, user_id, expression, status 
+		FROM tasks 
+		WHERE status = 'pending' 
+		LIMIT 1
+	`).Scan(&task.ID, &task.UserID, &task.Expression, &task.Status)
+
+	// Если ошибка при извлечении задачи, вернем ошибку
 	if err != nil {
-		return nil, fmt.Errorf("error querying tasks: %v", err)
-	}
-	defer rows.Close()
-
-	var tasks []models.Task
-	for rows.Next() {
-		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Expression, &task.Result, &task.Status); err != nil {
-			return nil, fmt.Errorf("error scanning row: %v", err)
+		if err == sql.ErrNoRows {
+			// Нет задач со статусом "pending"
+			return nil, fmt.Errorf("no pending tasks")
 		}
-		tasks = append(tasks, task)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating over rows: %v", err)
+		return nil, err
 	}
 
-	return tasks, nil
+	return &task, nil
 }

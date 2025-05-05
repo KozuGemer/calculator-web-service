@@ -1,10 +1,10 @@
 package main
 
 import (
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,6 +12,8 @@ import (
 
 	"github.com/KozuGemer/calculator-web-service/agents"
 	"github.com/KozuGemer/calculator-web-service/db"
+	"github.com/KozuGemer/calculator-web-service/handlers"
+	"github.com/KozuGemer/calculator-web-service/models"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -35,11 +37,6 @@ var secretKey = []byte("your-secret-key") // Должен совпадать с 
 //go:embed site/*
 var embeddedFiles embed.FS
 
-// generateTaskID генерирует случайный ID для задачи
-func generateTaskID() string {
-	rand.Seed(time.Now().UnixNano())
-	return fmt.Sprintf("task-%d", rand.Intn(1000000))
-}
 func registerPageHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := embeddedFiles.ReadFile("site/register.html")
 	if err != nil {
@@ -138,7 +135,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if token != "" && r.URL.Path == "/api/v1/calculate" {
-		createTaskHandler(w, r)
+		handlers.CreateTaskHandler(w, r)
 		return
 	}
 
@@ -307,59 +304,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
 }
 
-// createTaskHandler создает новую задачу
-func createTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Expression string `json:"expression"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	// Получаем токен из cookie
-	token, err := extractToken(r)
-	if err != nil {
-		http.Error(w, "Error extracting token from cookie", http.StatusUnauthorized)
-		return
-	}
-
-	// Извлекаем login из токена
-	claims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
-	})
-	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	login, ok := claims["login"].(string)
-	if !ok {
-		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-		return
-	}
-
-	// Получаем ID пользователя из базы данных
-	user, err := db.GetUserByLogin(login)
-	if err != nil {
-		http.Error(w, "Error fetching user", http.StatusInternalServerError)
-		return
-	}
-
-	// Создаем задачу и сохраняем ее в базе данных
-	task, err := db.CreateTask(user.ID, req.Expression)
-	if err != nil {
-		http.Error(w, "Error creating task", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(task)
-}
-
 // getTaskStatusHandler возвращает статус задачи
 func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
@@ -380,17 +324,6 @@ func getTaskStatusHandler(w http.ResponseWriter, r *http.Request) {
 // completeTaskHandler завершает задачу, устанавливая результат
 func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
-
-	// Блокируем очередь задач для безопасного доступа
-	queueLock.Lock()
-	task, exists := taskQueue[id]
-	queueLock.Unlock()
-
-	if !exists {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
-	}
-
 	// Получаем login пользователя из токена
 	token, err := extractToken(r)
 	if err != nil {
@@ -398,6 +331,7 @@ func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Разбираем JWT и получаем claims
 	claims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
@@ -407,33 +341,62 @@ func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	login, ok := claims["login"].(int)
+	// Получаем login из токена
+	login, ok := claims["login"].(string) // предполагается, что login - строка
 	if !ok {
 		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 		return
 	}
 
-	// Проверяем, что задача принадлежит пользователю
-	if task.UserID != login {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	// Получаем user_id пользователя по login
+	userID, err := getUserIDByLogin(login)
+	if err != nil {
+		http.Error(w, "Error fetching user ID", http.StatusInternalServerError)
 		return
 	}
 
+	// Извлекаем задачу по task_id и user_id из базы данных
+	task, err := db.GetTaskByIDAndUserID(id, userID)
+	if err != nil {
+		http.Error(w, "Error fetching task", http.StatusInternalServerError)
+		return
+	}
+
+	// Если задача не найдена или она не принадлежит пользователю
+	if task == nil {
+		http.Error(w, "Task not found or does not belong to the user", http.StatusNotFound)
+		return
+	}
+
+	// Если задача уже завершена, возвращаем ее результат
+	if task.Status == "done" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(task) // Отправляем результат задачи
+		return
+	}
+
+	// Если задача не завершена, продолжаем процесс обновления
 	var req struct {
 		Result float64 `json:"result"`
 	}
 
+	// Читаем результат из тела запроса
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Обновляем задачу в базе данных
+	// Обновляем статус задачи в базе данных и сохраняем результат
 	err = db.UpdateTaskStatus(task.ID, "done", req.Result)
 	if err != nil {
 		http.Error(w, "Error updating task", http.StatusInternalServerError)
 		return
 	}
+
+	// Обновляем задачу в памяти (если необходимо)
+	task.Status = "done"
+	task.Result = &req.Result
 
 	// Отправляем обновленную задачу
 	w.Header().Set("Content-Type", "application/json")
@@ -441,26 +404,78 @@ func completeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(task)
 }
 
-// getAllExpressionsHandler возвращает все задачи
-func getAllExpressionsHandler(w http.ResponseWriter, r *http.Request) {
-	queueLock.Lock()
-	defer queueLock.Unlock()
+// Мы сохраняем задачи для каждого пользователя, чтобы не делать запрос несколько раз
+var cachedTasks = make(map[int][]models.Task)
 
-	expressions := make([]Task, 0, len(taskQueue))
-	for _, task := range taskQueue {
-		expressions = append(expressions, *task)
+// Получить user_id по login
+func getUserIDByLogin(login string) (int, error) {
+	// Открытие базы данных
+	db, err := sql.Open("sqlite3", "./calculator.db")
+	if err != nil {
+		return 0, fmt.Errorf("error opening database: %v", err)
+	}
+	defer db.Close()
+
+	// Выполняем SQL запрос для поиска user_id по login
+	var userID int
+	err = db.QueryRow("SELECT id FROM users WHERE login = ?", login).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Если пользователя с таким login нет
+			return 0, fmt.Errorf("user not found")
+		}
+		return 0, fmt.Errorf("error querying user_id: %v", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"expressions": expressions,
+	return userID, nil
+}
+
+func getAllExpressionsHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := extractToken(r)
+	if err != nil {
+		http.Error(w, "Error extracting token from cookie", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем login пользователя из токена
+	claims := jwt.MapClaims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
 	})
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	login, ok := claims["login"].(string)
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем user_id для этого login
+	userID, err := getUserIDByLogin(login)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Получаем все задачи для пользователя с состоянием "done"
+	tasks, err := db.GetTasksByStatus(userID, "done")
+	if err != nil {
+		http.Error(w, "Error fetching tasks", http.StatusInternalServerError)
+		return
+	}
+
+	// Возвращаем задачи пользователю в формате JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
 }
 
 func main() {
 	// Инициализация базы данных
 	db.InitDB()
-	http.HandleFunc("/api/v1/tasks", createTaskHandler)
+	http.HandleFunc("/api/v1/tasks", handlers.CreateTaskHandler)
 	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/complete", completeTaskHandler)
 	http.HandleFunc("/api/v1/expressions", getAllExpressionsHandler)
@@ -477,7 +492,7 @@ func main() {
 	http.HandleFunc("/api/v1/compare-tokens", compareTokensHandler)
 
 	// Запуск агента
-	go agents.StartAgent("http://localhost:8080")
+	go agents.StartAgent()
 
 	fmt.Println("Server is running on :8080")
 	err := http.ListenAndServe(":8080", nil)

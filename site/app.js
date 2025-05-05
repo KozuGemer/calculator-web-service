@@ -7,12 +7,12 @@ function getCookie(name) {
 async function calculate() {
     const expression = document.getElementById('expression').value;
     try {
-        const response = await fetch('/api/v1/calculate', {
+        const response = await fetch('/api/v1/tasks', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ expression }),
+            body: JSON.stringify({ "expression": expression }),
         });
         const data = await response.json();
         console.log("Task status check:", data);
@@ -28,7 +28,7 @@ async function calculate() {
 
 async function checkStatus(taskId, delay = 500) {
     try {
-        const response = await fetch(`/api/v1/tasks/status?id=${taskId}`);
+        const response = await fetch(`/api/v1/tasks/complete?id=${taskId}`);
         const task = await response.json();
         if (task.status === 'done') {
             document.getElementById('result').textContent = 'Результат: ' + task.result;

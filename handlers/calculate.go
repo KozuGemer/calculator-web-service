@@ -5,30 +5,62 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/KozuGemer/calculator-web-service/db"
 	"github.com/KozuGemer/calculator-web-service/models"
 	"github.com/KozuGemer/calculator-web-service/utils"
 )
 
-// CalculateHandler - обработчик запросов для вычислений
-func CalculateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+func CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Expression string `json:"expression"`
 	}
-
-	var req models.Request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	result, err := utils.Calc(req.Expression)
+	fmt.Println(req.Expression)
+	login, err := utils.GetLoginFromToken(r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(models.Response{Error: err.Error()})
+		fmt.Print(err)
+	}
+	// Получаем пользователя из базы данных
+	user, err := db.GetUserByLogin(login)
+	if err != nil {
+		http.Error(w, "Error fetching user", http.StatusInternalServerError)
 		return
 	}
 
+	// Генерация уникального ID задачи
+	taskID := utils.GenerateTaskID()
+
+	// Создаем новую задачу
+	task := models.Task{
+		ID:         taskID,
+		UserID:     user.ID,
+		Expression: req.Expression,
+		Status:     "pending",
+	}
+
+	// Декодируем тело запроса в структуру
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		// В случае ошибки возвращаем клиенту ошибку
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Логирование выражения, чтобы проверить, что мы получаем
+	fmt.Println("Received expression:", req.Expression)
+
+	// Сохраняем задачу в базе данных
+	_, err = db.CreateTask(taskID, user.ID, req.Expression)
+	if err != nil {
+		http.Error(w, "Error creating task", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправляем задачу в ответ
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(models.Response{Result: fmt.Sprintf("%f", result)})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":         task.ID,
+		"expression": task.Expression,
+		"status":     task.Status,
+	})
 }
