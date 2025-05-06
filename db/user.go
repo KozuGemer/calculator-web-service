@@ -12,37 +12,28 @@ import (
 
 // Регистрация нового пользователя
 func RegisterUser(login, password string) (*models.User, error) {
-	log.Println("Начало регистрации пользователя:", login)
-
+	log.Println("Регистрация пользователя:", login)
 	// Проверяем, существует ли логин
 	var existingLogin string
 	err := DB.QueryRow("SELECT login FROM users WHERE login = ?", login).Scan(&existingLogin)
 	if err == nil {
-		log.Println("Ошибка: логин уже существует:", existingLogin)
 		return nil, fmt.Errorf("user with this login already exists")
 	}
 
-	// Хэшируем пароль
-	log.Println("Хэшируем пароль для пользователя:", login)
-	log.Println("Пароль:", password)
 	// Генерируем токен
 	token := generateJWTToken(login)
-	log.Println("Сгенерирован токен:", token)
 
 	// Добавляем пользователя в базу данных
 	stmt, err := DB.Prepare("INSERT INTO users(login, password, token) VALUES(?, ?, ?)")
 	if err != nil {
-		log.Println("Ошибка при подготовке SQL запроса:", err)
 		return nil, fmt.Errorf("error preparing statement: %v", err)
 	}
 
 	_, err = stmt.Exec(login, string(password), token)
 	if err != nil {
-		log.Println("Ошибка при вставке пользователя в базу:", err)
 		return nil, fmt.Errorf("error inserting user: %v", err)
 	}
 
-	log.Println("Регистрация завершена успешно для:", login)
 	return &models.User{Login: login, Password: string(password), Token: token}, nil
 }
 
@@ -58,35 +49,22 @@ func AuthenticateUser(login, password string) (*models.User, error) {
 		Scan(&user.ID, &user.Login, &hashedPassword, &user.Token)
 
 	if err != nil {
-		log.Println("Ошибка извлечения данных из БД:", err)
 		return nil, fmt.Errorf("invalid login or password")
 	}
-
-	// Проверяем, правильно ли извлекается хэш
-	log.Println("Хэш пароля, загруженный из базы:", hashedPassword)
 
 	// Сравнение пароля с хэшем из базы
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
-		log.Println("Ошибка сравнения паролей:", err)
 		return nil, fmt.Errorf("invalid login or password")
 	}
-
-	log.Println("Пароль успешно совпал!")
-
 	// Генерируем новый токен для пользователя
 	newToken := generateJWTToken(login)
-	log.Println("Сгенерирован новый токен:", newToken)
 
 	// Обновляем токен в БД
 	_, err = DB.Exec("UPDATE users SET token = ? WHERE login = ?", newToken, login)
 	if err != nil {
-		log.Println("Ошибка при обновлении токена в БД:", err)
 		return nil, fmt.Errorf("error updating token")
 	}
-
-	log.Println("Токен успешно обновлён!")
-
 	user.Token = newToken
 	return &user, nil
 }

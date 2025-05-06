@@ -52,13 +52,9 @@ func GetTasksByStatus(userID int, status string) ([]models.Task, error) {
 			log.Panicf("Recovered from panic: %s", r)
 		}
 	}()
-	// Выводим отладочную информацию о подключении
-	fmt.Println("Connected to database successfully")
 
 	// Выполняем SQL запрос
 	query := "SELECT task_id, user_id, expression, result, status FROM tasks WHERE status = ? AND user_id = ?"
-	fmt.Printf("Executing query: %s\n", query)
-	fmt.Printf("With parameters: status = %s, user_id = %d\n", status, userID)
 
 	rows, err := db.Query(query, status, userID)
 	if err != nil {

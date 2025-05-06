@@ -45,9 +45,6 @@ func CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Логирование выражения, чтобы проверить, что мы получаем
-	fmt.Println("Received expression:", req.Expression)
-
 	// Сохраняем задачу в базе данных
 	_, err = db.CreateTask(taskID, user.ID, req.Expression)
 	if err != nil {

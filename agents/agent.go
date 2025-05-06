@@ -33,9 +33,6 @@ func StartAgent() {
 			fmt.Println("Error updating task:", err)
 			continue
 		}
-
-		// Выводим результат в лог
-		fmt.Printf("Task %d completed. Result: %f\n", task.ID, result)
 	}
 }
 

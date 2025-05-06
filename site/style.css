@@ -90,8 +90,6 @@ button {
 }
 }
 
-
-
 #expression:focus{
     color: #361973;
     box-shadow: 0rem 0rem 4rem #361973;
@@ -103,7 +101,7 @@ button {
     text-align: center;
     font-size: 1.7em;
     margin-top: 0.2em;
-    margin-left: 12.35em;
+    margin-left: 12.17em;
 }
 #result{
     border: 0.2em solid #000;
