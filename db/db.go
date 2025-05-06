@@ -34,6 +34,7 @@ func InitDB() {
 	_, err = DB.Exec(`
 		CREATE TABLE IF NOT EXISTS tasks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			task_id INTEGER,
 			user_id INTEGER,
 			expression TEXT,
 			result TEXT,

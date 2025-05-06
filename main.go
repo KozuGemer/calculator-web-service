@@ -121,6 +121,17 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+// loginPageHandler отдает HTML-страницу логина (без проверки токена)
+func allTasksPageHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := embeddedFiles.ReadFile("site/alltasks.html")
+	if err != nil {
+		http.Error(w, "Error loading login page", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.Write(data)
+}
+
 // indexHandler отдает основную страницу (калькулятор) для авторизованных пользователей
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := extractToken(r)
@@ -160,6 +171,8 @@ func styleHandler(w http.ResponseWriter, r *http.Request) {
 	var fileName string
 	if token == "" && r.URL.Path == "/style/register.css" {
 		fileName = "register.css" // Если токена нет и путь /register
+	} else if token != "" && r.URL.Path == "/style/alltasks.css" {
+		fileName = "alltasks.css"
 	} else if token == "" {
 		fileName = "login.css" // Если токен отсутствует, но путь не /register
 	} else {
@@ -183,6 +196,8 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 	var NameJS string
 	if token == "" && r.URL.Path == "/jsscripts/register.js" {
 		NameJS = "register.js"
+	} else if token != "" && r.URL.Path == "/jsscripts/alltasks.js" {
+		NameJS = "alltasks.js"
 	} else {
 		NameJS = "app.js"
 	}
@@ -302,6 +317,17 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Expires:  time.Now().Add(-24 * time.Hour), // Устанавливаем прошедшую дату для удаления cookie
+	})
+	w.Write([]byte("Logout successful"))
 }
 
 // getTaskStatusHandler возвращает статус задачи
@@ -479,7 +505,8 @@ func main() {
 	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/complete", completeTaskHandler)
 	http.HandleFunc("/api/v1/expressions", getAllExpressionsHandler)
-
+	http.HandleFunc("/alltasks", allTasksPageHandler)
+	http.HandleFunc("/logout", logout)
 	http.HandleFunc("/register", registerPageHandler) // Страница регистрации
 	// Регистрация маршрутов
 	http.HandleFunc("/api/v1/register", registerHandler)

@@ -34,12 +34,32 @@ async function checkStatus(taskId, delay = 500) {
             document.getElementById('result').textContent = 'Результат: ' + task.result;
         } else {
             await new Promise(resolve => setTimeout(resolve, delay)); // Ждем delay мс
-            await checkStatus(taskId, Math.min(delay * 2, 2000)); // Рекурсивно вызываем с увеличенной задержкой
+            await checkStatus(taskId, Math.min(delay * 3, 3000)); // Рекурсивно вызываем с увеличенной задержкой
         }
     } catch (error) {
         document.getElementById('result').textContent = 'Ошибка: ' + error;
     }
 }
+document.getElementById('Exit').addEventListener('click', function() {
+    // Отправляем запрос на сервер для logout
+    fetch('/logout', {
+        method: 'POST',
+        credentials: 'include'  // Важно! Это обеспечит отправку cookies с запросом
+    })
+    .then(response => {
+        if (response.ok) {
+            // Если logout успешен, перенаправляем пользователя на страницу логина
+            window.location.href = '/login';  // Перенаправление на страницу логина
+        } else {
+            // Обрабатываем ошибку, если logout не удался
+            console.error("Ошибка при выходе");
+        }
+    })
+    .catch(error => {
+        // Ошибка при отправке запроса
+        console.error("Ошибка:", error);
+    });
+});
 
 document.getElementById('auth-form').addEventListener('submit', async function(e) {
     e.preventDefault();

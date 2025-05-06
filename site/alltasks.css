@@ -1,0 +1,65 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: 0;
+    outline: 0;
+}
+
+html {
+    background-color: #e8e3e3;
+}
+
+body {
+    h1 {
+        color: #361973;
+        margin-left: 0.4em;
+    }
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    padding-top: 0.2em;
+    align-items: center;
+    flex-direction: column;
+    position: relative;  /* Для абсолютного позиционирования элементов внутри */
+}
+
+/* Стиль для контейнера кнопок */
+.button-container {
+    position: absolute; /* Абсолютное позиционирование */
+    top: 0.5em; /* Отступ от верхнего края */
+    right: 0.5em; /* Отступ от правого края */
+    display: flex; /* Выстраиваем кнопки в строку */
+    gap: 1em; /* Расстояние между кнопками */
+}
+
+/* Стиль для кнопок */
+button {
+    padding: 0.5em 1em;  /* Паддинги для кнопок */
+    font-size: 1em;  /* Размер шрифта для кнопок */
+    cursor: pointer;  /* Курсор при наведении */
+    border-radius: 4px;  /* Радиус скругления */
+    border: 1px solid #361973;  /* Рамка вокруг кнопок */
+}
+
+.calculator {
+    width: 50em;
+}
+
+#noTasksMessage {
+    display: none; /* Скрыто по умолчанию */
+    justify-content: center;
+    font-size: 24px; /* Увеличиваем размер текста для сообщения */
+    color: red;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    font-size: 1.5em;
+    border: 1px solid #361973; /* Добавляем рамку ко всем ячейкам */
+}
+
+tr {
+    border: 1px solid #361973; /* Рамка для каждой строки */
+}
