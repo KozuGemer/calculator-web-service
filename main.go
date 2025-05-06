@@ -212,7 +212,7 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // registerHandler отвечает за регистрацию пользователя
-func registerHandler(w http.ResponseWriter, r *http.Request) {
+func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Проверяем, есть ли токен в cookie
 	token := getTokenFromCookie(r)
 
@@ -252,7 +252,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // loginHandler отвечает за авторизацию пользователя и генерацию JWT-токена
-func loginHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Проверяем, есть ли токен в cookie
 	token := getTokenFromCookie(r)
 
@@ -509,8 +509,8 @@ func main() {
 	http.HandleFunc("/logout", logout)
 	http.HandleFunc("/register", registerPageHandler) // Страница регистрации
 	// Регистрация маршрутов
-	http.HandleFunc("/api/v1/register", registerHandler)
-	http.HandleFunc("/api/v1/login", loginHandler)
+	http.HandleFunc("/api/v1/register", RegisterHandler)
+	http.HandleFunc("/api/v1/login", LoginHandler)
 	http.HandleFunc("/login", loginPageHandler) // Страница логина
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/style/", styleHandler) // Главная страница (калькулятор)
