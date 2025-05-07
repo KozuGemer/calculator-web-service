@@ -198,6 +198,8 @@ func jsHandler(w http.ResponseWriter, r *http.Request) {
 		NameJS = "register.js"
 	} else if token != "" && r.URL.Path == "/jsscripts/alltasks.js" {
 		NameJS = "alltasks.js"
+	} else if token == "" && r.URL.Path == "/jsscripts/login.js" {
+		NameJS = "login.js"
 	} else {
 		NameJS = "app.js"
 	}
@@ -502,7 +504,6 @@ func main() {
 	// Инициализация базы данных
 	db.InitDB()
 	http.HandleFunc("/api/v1/tasks", handlers.CreateTaskHandler)
-	http.HandleFunc("/api/v1/tasks/status", getTaskStatusHandler)
 	http.HandleFunc("/api/v1/tasks/complete", completeTaskHandler)
 	http.HandleFunc("/api/v1/expressions", getAllExpressionsHandler)
 	http.HandleFunc("/alltasks", allTasksPageHandler)

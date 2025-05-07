@@ -19,5 +19,8 @@ WORKDIR /root/
 # Копируем собранный бинарник из предыдущего шага
 COPY --from=builder /app/server .
 
+# Копируем файл базы данных в контейнер
+COPY --from=builder /app/calculator.db /root/calculator.db
+
 # Запускаем сервер
 CMD ["./server"]
